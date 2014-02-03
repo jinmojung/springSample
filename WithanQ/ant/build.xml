@@ -1,0 +1,126 @@
+<project name="WithanQ" default="clean" basedir="../">
+	<!--
+		window -> preferences -> ant -> runtime -> class path -> ant home Entries -> add jars -> /WithanQ/ant/lib/jsch-0.1.50.jar
+	
+	-->
+	<property name="tomcat.home" value="D:\springsource\tomcat7"/>
+	
+	<property name="warname" value="WithanQ_DEV"/>
+	<property name="user.name" value="jinmojung"/>
+	
+    <property name="src.dir" value="src"/>
+    <property name="src.webcontent.dir" value="WebContent"/>
+    	
+    <property name="target.dir" value="target"/>
+    <property name="target.classes.dir" value="${target.dir}/WEB-INF/classes"/>
+    <property name="target.lib.dir" value="${target.dir}/WEB-INF/lib"/>
+    <property name="target.war.dir" value="war"/>
+	
+	<property name="lib.dir" value="${src.webcontent.dir}/WEB-INF/lib"/>
+		
+	<property name="warbackup.dir" value="D:\WithanQ_war_backup"/>	
+		
+	<property name="remotehost" value="192.168.0.253" />
+	<property name="remotehost.username" value="withanqwww" />
+	<property name="remotehost.password" value="1005web" />
+	<property name="remotehost.webapps.dir" value="/tomcats/1005/webapps/ROOT" />
+		
+	<taskdef name="ssh" classname="com.sshtools.ant.Ssh" classpath="ant/lib/maverick-ant.jar" />
+		
+	<path id="classpath">
+        <fileset dir="${lib.dir}">
+            <include name="**.jar"/>
+        </fileset>
+        <fileset dir="${tomcat.home}/lib">
+            <include name="**.jar"/>
+        </fileset>
+	</path>
+	
+
+    <target name="prepare">
+       <tstamp>
+          <format property="TODAY" pattern="MMddyyyyhhmm"/>
+       </tstamp>
+    	
+       <mkdir dir="${target.dir}"/>
+       <mkdir dir="${target.war.dir}"/>
+    </target>
+    	
+
+    <target name="build" depends="prepare">
+    	<copy todir="${target.dir}">
+            <fileset dir="${src.webcontent.dir}">
+                <include name="**"/>
+                <exclude name="**/lib/**"/>
+                <exclude name="**/META-INF/**"/>
+            </fileset>
+        </copy>
+    	
+    	<copy todir="${target.lib.dir}">
+            <fileset dir="${lib.dir}">
+                <include name="jstl**"/>
+            </fileset>
+        </copy>
+    	
+    	<mkdir dir="${target.classes.dir}"/>
+        <javac destdir="${target.classes.dir}" target="1.6"  
+               debug="on" deprecation="off" optimize="off">
+               <src path="${src.dir}"/>
+               <classpath refid="classpath"/>
+        </javac>
+    </target>
+
+    <target name="buildwar" depends="build">
+        <jar jarfile="${target.war.dir}/${warname}_${TODAY}.war" basedir="${target.dir}">
+             <manifest>
+                  <attribute name="Built-By" value="${user.name}"/>
+                  <attribute name="Built-Time" value="${TODAY}"/>
+            </manifest>
+        </jar>
+    </target>
+
+    <target name="deploy" depends="buildwar">
+   		<sshexec host="${remotehost}" username="${remotehost.username}" password="${remotehost.password}" trust="true"
+   		       		command="source /etc/profile;${remotehost.webapps.dir}/../../bin/shutdown.sh;rm -rf ${remotehost.webapps.dir}/WEB-INF/ ${remotehost.webapps.dir}/*.war"/>
+   		       			
+    	<ssh host="${remotehost}" username="${remotehost.username}" password="${remotehost.password}" port="22" version="2" >
+            <sftp action="put" remotedir="${remotehost.webapps.dir}" verbose="true">
+                <fileset dir="${target.war.dir}" >
+                    <include name="**.war" />
+                </fileset>
+            </sftp>
+        </ssh>
+            	
+    	<sshexec host="${remotehost}" username="${remotehost.username}" password="${remotehost.password}" trust="true"
+    	   		       		command="source /etc/profile;cd ${remotehost.webapps.dir};jar -xvf ${remotehost.webapps.dir}/*.war;${remotehost.webapps.dir}/../../bin/startup.sh;"/>
+    </target>
+	
+	 <target name="warbackup" depends="deploy">
+       	<mkdir dir="${warbackup.dir}"/>
+	 	<copy todir="${warbackup.dir}">
+	 		<fileset dir="${target.war.dir}">
+                <include name="**.war"/>
+            </fileset>
+ 		</copy>
+    </target>
+
+    <target name="clean" depends="warbackup">
+    	<delete dir="${target.dir}"/>
+    	<delete dir="${target.war.dir}"/>
+    </target>
+    		
+	<target name="deploy_lib">
+    	<ssh host="${remotehost}" username="${remotehost.username}" password="${remotehost.password}" port="22" version="2" >
+            <sftp action="put" remotedir="${remotehost.webapps.dir}/../../lib" verbose="true">
+                <fileset dir="${lib.dir}" >
+                    <include name="**.jar" />
+                	<exclude name="jstl**"/>
+                </fileset>
+            </sftp>
+        </ssh>
+    </target>
+    		
+    		
+    		
+
+</project>

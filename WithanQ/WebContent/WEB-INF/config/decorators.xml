@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>  
+<!--  
+                 데코레이터 파일들이 있는 디폴트 디렉토리를 선택 
+--> 
+<decorators defaultdir="/WEB-INF/views/decorators">
+    <excludes>
+      <pattern>/index.do</pattern>
+    </excludes>    
+ <decorator name="main" page="main.jsp">
+       <pattern>/*</pattern>  
+    </decorator>  
+</decorators>
